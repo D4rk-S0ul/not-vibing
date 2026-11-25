@@ -44,11 +44,18 @@ test("git guard: refuses skipping the hook and force pushes, asks for main and t
     "git push origin v1.2.0": "ask",
     "git -C . push origin main": "ask",
     "git push origin HEAD:main": "ask",
-    "npm test && git push": "ask",
+    "npm test && git push": "deny",
+    "git push origin main 2>&1 | tail -3": "deny",
     "git status && git log -1": "allow",
     "ls": "allow",
   };
   for (const [command, expected] of Object.entries(onMain)) assert.equal(decide(command), expected, command);
+  // The prompt shows the whole command: an ask is one short question, a chained push says how.
+  const reason = (command) =>
+    JSON.parse(node(join(tools, "git-guard.mjs"), JSON.stringify({ tool_input: { command } }), dir).stdout)
+      .hookSpecificOutput.permissionDecisionReason;
+  assert.match(reason("git push origin main"), /^Allow push to main\?/);
+  assert.match(reason("npm test && git push"), /^Run only `git push <remote> <branch>`/);
   g("checkout", "-q", "-b", "feature/y");
   assert.equal(decide("git push"), "allow", "bare push on a work branch");
   assert.equal(decide("git push -u origin HEAD"), "allow", "HEAD on a work branch");

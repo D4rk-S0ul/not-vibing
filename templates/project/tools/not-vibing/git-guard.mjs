@@ -6,10 +6,14 @@
 // - A force push is refused.
 // - A push that reaches a protected branch (main) or tags asks the user; work branches push
 //   freely.
+// - A command that would ask must be that git step alone (nothing chained, piped or redirected,
+//   under 200 characters), else it is refused with how to run it: the user's prompt shows the
+//   whole command, so it then reads as one short question.
 import { readFileSync } from "node:fs";
 import { git, loadConfig } from "./lib.mjs";
 
 const input = JSON.parse(readFileSync(0, "utf8") || "{}");
+const raw = String(input.tool_input?.command || "");
 // Quoted strings (commit messages) can't contain flags; blank them before looking.
 const command = (input.tool_input?.command || "").replace(/"(?:\\.|[^"\\])*"|'[^']*'/g, '""');
 const segments = command
@@ -56,7 +60,7 @@ for (const seg of segments) {
     decide("deny", "Force pushes are refused: they rewrite history others (and CI) have seen. Push a new commit instead; if history really must change, the user does it by hand.");
   }
   if (args.some((a) => ["--all", "--mirror", "--tags", "--follow-tags", "--delete", "-d"].includes(a) || a.startsWith("refs/tags/"))) {
-    reasons.push(`"${seg}" pushes tags, every branch, or deletes a ref`);
+    reasons.push("Allow a push of tags, every branch, or a deleted ref?");
     continue;
   }
   const refspecs = args.filter((a) => !a.startsWith("-")).slice(1);
@@ -70,9 +74,15 @@ for (const seg of segments) {
     targets = [upstream ? upstream.replace(/^[^/]+\//, "") : git(["rev-parse", "--abbrev-ref", "HEAD"]) || "?"];
   }
   const hit = targets.filter((t) => protectedBranches.includes(t) || /^v\d/.test(t));
-  if (hit.length) reasons.push(`"${seg}" reaches ${hit.join(", ")}`);
+  if (hit.length) reasons.push(`Allow push to ${hit.join(", ")}?`);
 }
 if (reasons.length) {
-  decide("ask", `${reasons.join("; ")}. That makes it official (CI on main, deploys, releases): the user decides. Work branches push without asking.`);
+  if (/&&|\|\||[;|&<>\n]/.test(command) || raw.length > 200) {
+    decide(
+      "deny",
+      "Run only `git push <remote> <branch>`, nothing chained or redirected and under 200 characters, so the user's prompt shows just this push. Do the rest in separate calls.",
+    );
+  }
+  decide("ask", `${reasons.join(" ")} It makes the work official (CI, deploys, releases).`);
 }
 process.exit(0);

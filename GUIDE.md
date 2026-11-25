@@ -217,7 +217,7 @@ needs a GitHub remote and your okay.
 | Rule | Where | Holds for |
 |---|---|---|
 | Ask before editing protected paths or spending quota; deny edits to frozen data (added per project) | Claude Code permission rules | Claude Code |
-| Work branches push freely; a push that reaches `main` or a tag asks; a force push and skipping the commit hook are refused | Hook before each shell command (it reads the whole command, which permission patterns can't do reliably) | Claude Code |
+| Work branches push freely; a push that reaches `main` or a tag asks, as one short question, and only when run on its own (chained, it is refused with how to run it); a force push and skipping the commit hook are refused | Hook before each shell command (it reads the whole command, which permission patterns can't do reliably) | Claude Code |
 | `main` changes only through a pull request whose CI passed (offered at setup) | Branch protection on the server | every agent, and you |
 | Each edited file checked at once: line endings, control bytes, invisible characters, lint, boundaries such as "core has no DOM" | Hook after each edit | Claude Code |
 | A fast typecheck before the agent may end its turn | Stop hook | Claude Code |
