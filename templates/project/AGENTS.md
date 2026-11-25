@@ -1,7 +1,7 @@
 # {{PROJECT_NAME}}
 
-<!-- Not Vibing template. Budget about 80 lines (Anthropic's limit is 200): only what an agent can't learn from the repo.
-     No architecture overview, no directory listing. A line that keeps being missed belongs in
+<!-- Not Vibing template. Budget about 80 lines (Anthropic's limit is 200): only what an
+     agent can't learn from the repo. No architecture overview, no directory listing. A line that keeps being missed belongs in
      a hook, not in capitals. Delete this comment when filled. -->
 
 Read `STATUS.md` first (where we stand, the next step). Steps and their evidence: `steps.json`.
@@ -28,7 +28,8 @@ Read `STATUS.md` first (where we stand, the next step). Steps and their evidence
 - Report checks as the command and its output, not as "tests pass".
 - A known defect becomes a probe test that is expected to fail, before any fix.
 - A mistake that needs a note a second time gets a hook, script or test; the note then only
-  points to it. Long-running scripts run under `node tools/not-vibing/lock.mjs <name> -- "<command>"`.
+  points to it. Long-running scripts run under
+  `node tools/not-vibing/lock.mjs <name> -- "<command>"`.
 - A bigger bet is a spike: throwaway code, one number against a kill line fixed beforehand.
 - Work on a branch; push it and open a draft pull request, which runs CI. The user sees the
   evidence and merges. `main` changes only through that merge.

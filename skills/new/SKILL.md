@@ -28,9 +28,9 @@ say so and suggest `/not-vibing:audit` instead; continue only if the user wants 
 ## 2. Interview
 
 Interview the user until you could write the project's spec. Ask in batches of up to four
-questions at a time. Put every option's wording into the question text itself: some clients (phones,
-tablets, remote sessions) hide option previews. Offer a recommended answer first where one is
-sensible. Cover, in this order:
+questions at a time. Put every option's wording into the question text itself: some
+clients (phones, tablets, remote sessions) hide option previews. Offer a recommended answer
+first where one is sensible. Cover, in this order:
 
 1. **Mission**: what it does, for whom, the hard constraints (cost, privacy, offline).
 2. **Users**: who uses it, and how you will see what they do with it.
@@ -71,8 +71,9 @@ Wait for the user's okay.
 2. Fill them in. Leave no `{{...}}` placeholder and no template comment behind:
    - `AGENTS.md`: mission, exact commands (install, test one file, all checks), never-rules
      with reasons, pitfalls. A budget of about 80 lines (Anthropic's limit is 200).
-     `CLAUDE.md` stays the one-line import `@AGENTS.md`. Whatever a hook, deny rule, test or CI enforces for every agent in use
-     leaves the file: the mechanism's message says what to do. A rule enforced for Claude Code
+     `CLAUDE.md` stays the one-line import `@AGENTS.md`. Whatever a hook, deny rule, test or
+     CI enforces for every agent in use leaves the file: the mechanism's message says what to
+     do. A rule enforced for Claude Code
      only stays, marked as the guard for the other agents.
    - `STATUS.md`: where we stand, the next step, what waits for the user. At most 60 lines.
    - `steps.json`: every component from the interview with kind, truth, reference, cheapest
@@ -86,9 +87,10 @@ Wait for the user's okay.
      that reads the whole command: skipping the commit hook and force pushes are refused, a
      push that reaches `main` or a tag asks, work branches push freely; `protectedBranches`
      in `config.json`). Its hooks use exec form and need Claude Code 2.1.295 or later for
-     `onFailure: block`; say so if `claude --version` is older. Add the project's own: `deny` for paths that must never change (frozen data)
-     as `Edit(/path/**)`; `ask` for protected paths and every command that spends free-tier
-     or paid quota. About five rules in all, no preferences. Claude Code asks the user to
+     `onFailure: block`; say so if `claude --version` is older. Add the project's own:
+     `deny` for paths that must never change (frozen data) as `Edit(/path/**)`; `ask` for
+     protected paths and every command that spends free-tier or paid quota. A handful of
+     rules in all, no preferences. Claude Code asks the user to
      approve edits to its own settings file; if the edit is refused, show the user the diff
      and don't commit until the rules are in. Tell the user plainly that Bash can still write
      those paths indirectly: the rules guard the edit tools, not the shell. A never-rule that

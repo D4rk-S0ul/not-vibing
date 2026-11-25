@@ -21,8 +21,8 @@ Or from a shell: `claude plugin marketplace add D4rk-S0ul/not-vibing`, then
 
 The hooks and scripts need Node.js (tested on version 24) in every project that uses them,
 whatever the project's own stack, and Claude Code 2.1.295 or later (for `onFailure: block`
-on the git guard; older versions run the hooks but let a failing guard through). `gh` (GitHub CLI) is optional; without it the CI lines say
-"unknown".
+on the git guard; older versions run the hooks but let a failing guard through). `gh` (GitHub
+CLI) is optional; without it the CI lines say "unknown".
 
 ## Commands
 

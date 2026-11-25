@@ -86,8 +86,8 @@ One example each:
   that number measured in CI on every change, not once on a fast laptop.
 
 A project is usually mixed. In the project above, the file writer was computable, the
-content rules were specified, and what to generate was observed. The trouble came from treating the observed
-part as if it were specified.
+content rules were specified, and what to generate was observed. The trouble came from
+treating the observed part as if it were specified.
 
 ### 3.2 Evidence comes in ranks
 
@@ -165,10 +165,10 @@ A note works only if the agent reads it and applies it at the right moment, and 
 are read only on demand. In the project above, a note said that stopping a background task
 can leave its script running. It had been there for five days when the same thing happened
 twice in one evening: a stopped task's script kept going and would have started a second
-copy of a job that spends quota. Several other
-mistakes (line endings rewritten by a script, backslashes lost in regular expressions,
-invisible characters from escape sequences) were each written down as notes after they
-happened, and were caught only later, at commit time, by a text check.
+copy of a job that spends quota. Several other mistakes (line endings rewritten by a script,
+backslashes lost in regular expressions, invisible characters from escape sequences) were
+each written down as notes after they happened, and were caught only later, at commit time,
+by a text check.
 
 So the kit sets up the usual mechanisms from the start: a check on every edited file for line
 endings, control bytes and invisible characters, and a lock for long-running scripts so a
@@ -234,11 +234,12 @@ takes minutes for a docs change will be skipped or resented; size the check to w
 commit can break.
 
 The instruction file stays short: this kit budgets about 80 lines, well inside the 200 that
-Anthropic names as the limit, because every line takes a little attention on every task. Only put in what the agent can't
-learn from the repository: the mission, exact commands, never-rules with their reasons,
-pitfalls that already happened and have no mechanism yet. No architecture tour, no directory
-listing, no shouting. A line that keeps being missed belongs in a hook; once it is a hook, the
-line goes, and the hook's message says what to do instead.
+Anthropic names as the limit, because every line takes a little attention on every task.
+Only put in what the agent can't learn from the repository: the mission, exact commands,
+never-rules with their reasons, pitfalls that already happened and have no mechanism yet.
+No architecture tour, no directory listing, no shouting. A line that keeps being missed
+belongs in a hook; once it is a hook, the line goes, and the hook's message says what to do
+instead.
 
 ## 6. Typical failures and their remedies
 
@@ -251,7 +252,7 @@ line goes, and the hook's message says what to do instead.
 | The real user comes last | Weeks of benchmark before anyone uses it | Week 1: a real user with a captured verdict, for every observed component |
 | Process without a budget | A step written in five places; a nine-minute commit check | One home per fact; checks sized to what a commit can break; cut docs work that crowds out product work |
 | The second instance switches off | CI out of minutes, `main` untested for days | The session start shows CI's state and how far `main` is ahead of it; the audit flags it |
-| Rules in prose | "IMPORTANT: never push" in the instruction file, broken anyway | A permission rule or hook. Prose for preferences only |
+| Rules in prose | "IMPORTANT: never push to main" in the instruction file, broken anyway | A permission rule or hook. Prose for preferences only |
 | A loop on a proxy | An agent iterating until a model judge is happy | Loops only on trusted checks (types, tests, builds, conformance) |
 | One model grading itself | The building session reviews its own numbers | A fresh session, different model, read-only, with a fixed brief |
 | Context overload | Session start reads the whole history | Read the instruction file and `STATUS.md`; open the rest only when the goal needs it |
