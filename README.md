@@ -29,7 +29,7 @@ CLI) is optional; without it the CI lines say "unknown".
 | Command | What it does |
 |---|---|
 | `/not-vibing:new` | In an empty repository: interviews you (mission, users, each component's kind of truth, never-rules, stack, agents), proposes the files, then writes them and proves the checks bite |
-| `/not-vibing:audit` | In a running project, read-only: a script measures instruction length, hooks, CI staleness, docs-only commits, evidence tiers and stale status; the agent judges which numbers drove decisions and what is written twice. Proposes changes, makes none |
+| `/not-vibing:audit` | In a running project, read-only: a script measures instruction length and content, hooks against the never-rules, CI and the local full-check record, pre-commit cost, skills with side effects, leftovers, frozen sets, evidence tiers and stale status; the agent judges which numbers drove decisions and what is written twice. Proposes changes, makes none |
 | `/not-vibing:review` | The outside review: run it in a fresh session on a different model. A read-only reviewer looks for where the numbers lie. Once per active week, and before any decision that rests on a number |
 
 ## What a new project gets

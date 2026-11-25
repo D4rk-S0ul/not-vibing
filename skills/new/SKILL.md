@@ -80,7 +80,10 @@ Wait for the user's okay.
      way, proxy; the stage-0 steps with their criteria as written now, evidence kind and tier,
      `pass: false`.
    - `tools/not-vibing/config.json`: `precommit` (fast checks: typecheck, unit tests; the
-     slow suite stays in CI), `typecheck` (under about 30 seconds), `lintFile` with `{file}`
+     slow suite stays in CI; under about 2 minutes for a code commit, or the hook invites
+     skipping), `full` (the same commands CI runs: `full-check.mjs` runs them locally and
+     records the commit they passed on, which keeps "checked" a fact when CI is rationed or
+     down), `typecheck` (under about 30 seconds), `lintFile` with `{file}`
      (optional), `boundaries` (for example "core has no DOM": a path and plain strings it must
      not contain, with the reason), `docsPaths`.
    - `.claude/settings.json`: the template already has the git guard (a PreToolUse hook

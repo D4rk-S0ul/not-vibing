@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
+import { readChecks } from "./lib.mjs";
 import { ciState, gitState, reviewState } from "./state.mjs";
 
 const arg = (name, dflt) => {
@@ -49,6 +50,21 @@ for (const f of ["CLAUDE.md", ".claude/CLAUDE.md", "AGENTS.md", "CLAUDE.local.md
 if (!instr) find(3, "No instruction file (CLAUDE.md or AGENTS.md).");
 const shouting = (read("CLAUDE.md") || "") + (read("AGENTS.md") || "");
 const caps = (shouting.match(/\b(IMPORTANT|MUST|NEVER|ALWAYS|CRITICAL)\b/g) || []).length;
+// Content that current guidance says to leave out: the agent can read the repo itself.
+const overview = [];
+for (const f of ["CLAUDE.md", ".claude/CLAUDE.md", "AGENTS.md"]) {
+  (read(f) || "").split("\n").forEach((l, i) => {
+    if (/^#+\s.*\b(architecture|directory|directories|folder|folders|map|structure|layout|overview)\b/i.test(l) || /[├└]──/.test(l)) overview.push(`${f}:${i + 1}`);
+  });
+}
+if (overview.length) find(1, `Architecture, folder or tree content in the instruction file (${overview.slice(0, 6).join(", ")}${overview.length > 6 ? ", ..." : ""}): the agent can read the repo; this costs context in every session and goes stale.`);
+const gates = [];
+for (const f of ["CLAUDE.md", ".claude/CLAUDE.md", "AGENTS.md"]) {
+  (read(f) || "").split("\n").forEach((l, i) => {
+    if (/\b(okay|ok|approv\w*|confirm\w*|consent)\b.*\bbefore (any|every|each|writing|starting|building)\b/i.test(l)) gates.push(`${f}:${i + 1}`);
+  });
+}
+if (gates.length) facts.push(`- Lines that may gate every step (an approval before any code or change): ${gates.join(", ")}. Judgment item 8 decides whether each gates an outcome or every step.`);
 if (caps) facts.push(`- Shouted words (IMPORTANT, MUST, NEVER, ...): ${caps}. Shouting doesn't help: a line that keeps being missed belongs in a hook.`);
 
 // 2. Hooks and permission rules.
@@ -56,6 +72,8 @@ facts.push("", "## Enforcement", "");
 let hookCount = 0;
 let gitGuard = false;
 let noVerifyRule = false;
+const enforcers = []; // every permission rule and hook command, to match never-lines against
+const events = { project: new Set(), user: new Set() };
 const userSettings = join(homedir(), ".claude", "settings.json");
 for (const f of [".claude/settings.json", ".claude/settings.local.json", "~/.claude/settings.json"]) {
   const t = f.startsWith("~") ? (existsSync(userSettings) ? readFileSync(userSettings, "utf8") : null) : read(f);
@@ -72,6 +90,8 @@ for (const f of [".claude/settings.json", ".claude/settings.local.json", "~/.cla
       for (const h of g.hooks || []) {
         if (!f.startsWith("~")) hookCount++;
         const cmd = [h.command, ...(h.args || [])].filter(Boolean).join(" ") || h.type;
+        enforcers.push(`${f} ${event} hook ${cmd}`);
+        events[f.startsWith("~") ? "user" : "project"].add(event);
         if (f === ".claude/settings.json" && event === "PreToolUse" && /git-guard/.test(cmd)) gitGuard = true;
         facts.push(`- ${f}: hook ${event}${g.matcher ? ` [${g.matcher}]` : ""}: \`${cmd.slice(0, 100)}\``);
       }
@@ -79,6 +99,7 @@ for (const f of [".claude/settings.json", ".claude/settings.local.json", "~/.cla
   }
   for (const kind of ["deny", "ask", "allow"]) {
     const rules = s.permissions?.[kind] || [];
+    for (const r of rules) enforcers.push(`${f} ${kind} ${r}`);
     if (rules.length) facts.push(`- ${f}: ${kind} (${rules.length}): ${rules.slice(0, 12).map((r) => `\`${r}\``).join(", ")}${rules.length > 12 ? ", ..." : ""}`);
   }
   if (f === ".claude/settings.json" && (s.permissions?.deny || []).some((r) => r.includes("no-verify"))) noVerifyRule = true;
@@ -98,6 +119,87 @@ if (!gitHooks.includes("pre-commit")) find(3, "No active git pre-commit hook: co
 const workflows = existsSync(join(root, ".github/workflows")) ? readdirSync(join(root, ".github/workflows")) : [];
 facts.push(`- CI workflows: ${workflows.join(", ") || "none"}`);
 if (!workflows.length) find(3, "No CI workflow: there is no second instance.");
+
+// Hook events in use. Each of the four gives something the others don't.
+const eventUse = {
+  PreToolUse: "reads a command before it runs (skipped hooks, force pushes, quota)",
+  PostToolUse: "checks each edit as it lands (line endings, invisible characters)",
+  Stop: "fast feedback before a turn ends (typecheck)",
+  SessionStart: "puts where we stand into a new session",
+};
+facts.push(`- Hook events in the project: ${[...events.project].join(", ") || "none"}; user-level: ${[...events.user].join(", ") || "none"}`);
+const missingEvents = Object.keys(eventUse).filter((e) => !events.project.has(e));
+if (missingEvents.length && hookCount) {
+  find(1, `No project hook for ${missingEvents.join(", ")}: ${missingEvents.map((e) => `${e} ${eventUse[e]}`).join("; ")}.${missingEvents.some((e) => events.user.has(e)) ? " Some are covered at user level, which holds on this machine only." : ""}`);
+}
+
+// Never-, only- and opt-in lines in the instruction files, against the rules and hooks.
+// A token of the line (a backticked word, a path, a --flag) found in a rule or hook command
+// counts as a match. No match doesn't prove the line is unguarded: a hook may cover it without
+// naming it. The agent settles that by reading (judgment item 3).
+const instrText = [];
+for (const f of ["CLAUDE.md", ".claude/CLAUDE.md", "AGENTS.md"]) {
+  const t = read(f);
+  if (t !== null) instrText.push([f, t]);
+}
+const ruleLines = [];
+for (const [f, t] of instrText) {
+  let inComment = false;
+  t.split("\n").forEach((l, i) => {
+    if (l.includes("<!--")) inComment = true;
+    const skip = inComment || /^\s*#/.test(l);
+    if (l.includes("-->")) inComment = false;
+    if (skip || !/\b(never|only|opt-in|must not|do not|don't)\b/i.test(l)) return;
+    const tokens = [
+      ...[...l.matchAll(/`([^`]+)`/g)].map((m) => m[1]),
+      ...(l.match(/(?:^|\s)((?:--?[a-z][\w-]*)|(?:[\w.-]+\/[\w./*-]*))/gi) || []).map((s) => s.trim()),
+    ]
+      .map((s) => s.replace(/[*()]+$/g, "").replace(/\/+$/, "").toLowerCase())
+      .filter((s) => s.length > 2);
+    const hit = enforcers.find((e) => tokens.some((tk) => e.toLowerCase().includes(tk)));
+    ruleLines.push({ at: `${f}:${i + 1}`, text: l.trim().replace(/^[-*]\s*/, "").slice(0, 90), hit });
+  });
+}
+if (ruleLines.length) {
+  facts.push(`- Never/only/opt-in lines in the instruction files (${ruleLines.length}), against the rules and hooks:`);
+  for (const r of ruleLines.slice(0, 30)) facts.push(`  - ${r.at}: "${r.text}": ${r.hit ? `matches \`${r.hit.slice(0, 80)}\`` : "no rule or hook names it"}`);
+  if (ruleLines.length > 30) facts.push(`  - ... and ${ruleLines.length - 30} more`);
+  const open = ruleLines.filter((r) => !r.hit);
+  if (open.length) find(2, `${open.length} of ${ruleLines.length} never/only/opt-in lines have no rule or hook that names them (${open.slice(0, 5).map((r) => r.at).join(", ")}${open.length > 5 ? ", ..." : ""}). Check each: commands that spend quota want an ask rule or hook, paths that must never change a deny rule, the rest a test.`);
+}
+
+// What a code commit costs. A hook that takes minutes invites skipping it.
+const checks = readChecks(root);
+const warnSeconds = (() => {
+  try {
+    return JSON.parse(read("tools/not-vibing/config.json") || "{}").precommitWarnSeconds || 120;
+  } catch {
+    return 120;
+  }
+})();
+if (checks.precommit) {
+  const p = checks.precommit;
+  facts.push(`- Last code-commit pre-commit run: ${p.seconds} s, ${p.ok ? "passed" : `failed on \`${p.failed}\``}, ${p.date.slice(0, 10)}`);
+  if (p.seconds > warnSeconds) find(2, `The pre-commit checks for a code commit took ${p.seconds} s (over ${warnSeconds} s): slow enough to tempt skipping. Keep the fast checks in the hook and move the rest to \`full-check.mjs\` before a push, and to CI.`);
+} else if (gitHooks.includes("pre-commit")) {
+  facts.push("- Pre-commit runtime for a code commit: no record. The agent times it or asks (judgment item 4); docs-only commits being cheap says nothing about code commits.");
+}
+
+// Commands and skills. Custom commands are skills now; a skill with side effects should not be
+// one the model can start on its own.
+const listDir = (p) => (existsSync(join(root, p)) ? readdirSync(join(root, p)) : []);
+const commandFiles = listDir(".claude/commands").filter((f) => f.endsWith(".md"));
+const skillFiles = listDir(".claude/skills")
+  .map((d) => `.claude/skills/${d}/SKILL.md`)
+  .filter((p) => existsSync(join(root, p)));
+facts.push(`- Skills: ${skillFiles.length}; old-style commands in \`.claude/commands/\`: ${commandFiles.length}`);
+if (commandFiles.length) find(1, `${commandFiles.length} file(s) in \`.claude/commands/\` (${commandFiles.slice(0, 5).join(", ")}): commands are skills now. Move each to \`.claude/skills/<name>/SKILL.md\`, which adds frontmatter such as \`disable-model-invocation\`.`);
+const sideEffects = /\b(git push|npm publish|gh release create|git tag \S+|deploy(s|ing)?|publish(es|ing)?|upload(s|ing)?)\b/i;
+const unguarded = [...commandFiles.map((f) => `.claude/commands/${f}`), ...skillFiles].filter((p) => {
+  const t = read(p) || "";
+  return sideEffects.test(t) && !/^disable-model-invocation:\s*true/m.test(t);
+});
+if (unguarded.length) find(2, `Skills or commands with side effects (deploy, release, push, publish) that the model may start on its own: ${unguarded.join(", ")}. Add \`disable-model-invocation: true\` to their frontmatter.`);
 
 // 3. CI and git state.
 const g = gitState(root);
@@ -123,6 +225,18 @@ if (!ci.available) {
 }
 facts.push(`- ${g.main} vs origin: ${g.aheadOfOrigin === null ? "no origin" : `${g.aheadOfOrigin} commit(s) ahead`}${g.lastRelease ? `; ${g.aheadOfRelease} ahead of release ${g.lastRelease}` : ""}`);
 if (g.aheadOfOrigin > 0) find(2, `${g.main} has ${g.aheadOfOrigin} unpushed commit(s): CI hasn't seen them.`);
+
+// What keeps "checked" a fact if CI were unavailable for a week: a local full-check record.
+if (checks.full) {
+  const f = checks.full;
+  const behind = f.commit && git(["merge-base", "--is-ancestor", f.commit, "HEAD"]) !== null ? git(["rev-list", "--count", `${f.commit}..HEAD`]) : null;
+  facts.push(`- Last local full check (full-check.mjs): ${f.ok ? "passed" : `failed on \`${f.failed}\``} on ${f.commit?.slice(0, 10)}${f.dirty ? " with uncommitted changes" : ""}, ${f.date.slice(0, 10)}, ${f.seconds} s; HEAD is ${behind ?? "?"} commit(s) past it`);
+} else {
+  facts.push("- Last local full check: no record (`tools/not-vibing/full-check.mjs` writes one). Without CI, nothing says which commit was last fully checked.");
+  if (!ci.available || !ci.lastGreenInMain || ci.aheadOfLastGreenInMain > 0 || (workflows.length && !/^\s*(push|pull_request)\s*:|\[\s*(push|pull_request)/m.test(workflows.map((w) => read(`.github/workflows/${w}`) || "").join("\n")))) {
+    find(2, "No record of a local full check, and CI is unreadable, behind, or rationed: if CI were unavailable for a week, nothing would say which commit last passed the full suite. Run `full-check.mjs` before pushes; it records the commit.");
+  }
+}
 
 // 4. Share of recent commits that only touch docs.
 const log = git(["log", g.main, `-${nCommits}`, "--name-only", "--format=@@%H"]) || "";
@@ -152,6 +266,45 @@ const walk = (dir, depth) => {
 };
 walk("", 0);
 facts.push(`- Files for where we stand and what is next: ${homes.join(", ") || "none"}`);
+// Leftovers: extra worktrees, branches already merged, branches nobody touched in a month.
+const worktrees = (git(["worktree", "list", "--porcelain"]) || "").split("\n").filter((l) => l.startsWith("worktree ")).length;
+const merged = (git(["branch", "--merged", g.main, "--format=%(refname:short)"]) || "").split("\n").filter((b) => b && b !== g.main);
+const monthAgo = Date.now() / 1000 - 30 * 86400;
+const old = (git(["for-each-ref", "refs/heads", "--format=%(refname:short) %(committerdate:unix)"]) || "")
+  .split("\n")
+  .map((l) => l.split(" "))
+  .filter(([b, d]) => b && b !== g.main && !merged.includes(b) && Number(d) < monthAgo)
+  .map(([b]) => b);
+facts.push(`- Worktrees: ${worktrees}; branches merged into ${g.main}: ${merged.length}; unmerged branches untouched for 30 days: ${old.length}`);
+if (worktrees > 1 || merged.length || old.length) {
+  find(1, `Leftovers: ${[worktrees > 1 ? `${worktrees - 1} extra worktree(s)` : "", merged.length ? `merged branches ${merged.slice(0, 5).join(", ")}${merged.length > 5 ? ", ..." : ""}` : "", old.length ? `branches untouched for 30 days ${old.slice(0, 5).join(", ")}${old.length > 5 ? ", ..." : ""}` : ""].filter(Boolean).join("; ")}. Remove or tag them, after the user's okay.`);
+}
+
+// Closed measurements: frozen sets, archives, replay and golden tests. Each keeps costing
+// test time and attention after its decision is made.
+const closed = [];
+const walkClosed = (dir, depth) => {
+  if (depth > 4 || !existsSync(join(root, dir || "."))) return;
+  for (const e of readdirSync(join(root, dir || "."))) {
+    if ([".git", "node_modules", "dist", "build", ".venv", "venv"].includes(e)) continue;
+    const p = dir ? `${dir}/${e}` : e;
+    let st;
+    try {
+      st = statSync(join(root, p));
+    } catch {
+      continue;
+    }
+    if (/^(frozen|archive[sd]?|replays?|golden|snapshots?|__snapshots__)$/i.test(e) || (!st.isDirectory() && /(replay|archive|frozen|golden)[\w.-]*\.(test|spec)\.|test[_-](replay|archive|frozen|golden)/i.test(e))) {
+      closed.push(st.isDirectory() ? `${p}/ (${readdirSync(join(root, p)).length} entries)` : p);
+      if (st.isDirectory()) continue;
+    }
+    if (st.isDirectory()) walkClosed(p, depth + 1);
+  }
+};
+walkClosed("", 0);
+facts.push(`- Frozen sets, archives, replay or golden tests: ${closed.length ? closed.slice(0, 12).join(", ") + (closed.length > 12 ? ", ..." : "") : "none found"}`);
+if (closed.length) find(1, `${closed.length} frozen set(s), archive(s) or replay test(s): which still guard a live decision, and which serve a measurement that is closed and could be retired under a tag (judgment item 9)?`);
+
 if (homes.length > 1) find(2, `${homes.length} places hold status, plans or next steps (${homes.join(", ")}): one step can be written down several times. The kit keeps STATUS.md and steps.json only.`);
 
 // 6. Observed components: a tier-1 or tier-2 number, and when it was last measured.
@@ -179,6 +332,24 @@ if (stepsText === null) {
   }
   const weakened = (steps?.steps || []).filter((s) => (s.weakened || []).length);
   if (weakened.length) facts.push(`- Steps with a weakened criterion: ${weakened.map((s) => s.id).join(", ")}`);
+}
+
+// Decisions that record a caveat about their own evidence (a bias, a self-graded number).
+const adrDir = ["docs/adr", "docs/decisions", "adr"].find((d) => existsSync(join(root, d)));
+const caveats = [];
+let adrsInForce = 0;
+if (adrDir) {
+  for (const f of readdirSync(join(root, adrDir)).filter((n) => n.endsWith(".md") && !/^0000/.test(n))) {
+    const t = read(`${adrDir}/${f}`) || "";
+    if (/^\W*status\W*:?\W*(superseded|deprecated|rejected)/im.test(t)) continue;
+    adrsInForce++;
+    t.split("\n").forEach((l, i) => {
+      if (/may favou?r|drafted by|self-graded|graded by the same|same (session|model)|\bbias(ed)?\b|not (yet )?(calibrated|checked|validated)|never (calibrated|checked|validated)/i.test(l)) caveats.push(`${adrDir}/${f}:${i + 1}`);
+    });
+  }
+  facts.push(`- ADRs in force: ${adrsInForce}; lines where one records a caveat about its own evidence: ${caveats.join(", ") || "none"}`);
+  if (caveats.length) find(2, `${caveats.length} line(s) where an ADR in force records a caveat about its own evidence (${caveats.slice(0, 5).join(", ")}${caveats.length > 5 ? ", ..." : ""}): what tier is the number it rests on, and was the caveat ever settled?`);
+  if (stepsText === null && adrsInForce) find(1, `${adrsInForce} ADR(s) in force and no \`steps.json\`: propose an evidence tier on each step and on each ADR still in force, so a script can find decisions resting on tier 3.`);
 }
 
 // 7. Stale STATUS.

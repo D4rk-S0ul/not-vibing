@@ -2,7 +2,7 @@
 // Character codes are written as numbers on purpose: escape sequences get mangled when
 // agents edit files through shell or Python strings.
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -118,4 +118,29 @@ export function isDocsOnly(paths, config = {}) {
     paths.length > 0 &&
     paths.every((p) => p.endsWith(".md") || prefixes.some((d) => p.startsWith(d)))
   );
+}
+
+// Local record of the last checks that ran on this clone, in .git/not-vibing-checks.json
+// (never committed). Keys: "precommit" (the last code commit's checks) and "full" (the last
+// full-check.mjs run). The audit reads it: what keeps "checked" a fact when CI is rationed.
+export function checksPath(dir = root) {
+  let gitDir = null;
+  try {
+    gitDir = execFileSync("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {}
+  return join(gitDir || join(dir, ".git"), "not-vibing-checks.json");
+}
+
+export function readChecks(dir = root) {
+  try {
+    return JSON.parse(readFileSync(checksPath(dir), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+export function recordCheck(key, value) {
+  try {
+    writeFileSync(checksPath(), JSON.stringify({ ...readChecks(), [key]: value }, null, 2) + "\n");
+  } catch {}
 }

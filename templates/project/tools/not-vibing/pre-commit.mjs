@@ -2,7 +2,7 @@
 // or by hand. Every commit: no CRLF, control byte or invisible character in a staged text
 // file. Commits that touch code: the fast checks from config.json. CI runs the full suite.
 import { execFileSync } from "node:child_process";
-import { checkBoundaries, checkText, git, isDocsOnly, loadConfig, run } from "./lib.mjs";
+import { checkBoundaries, checkText, git, isDocsOnly, loadConfig, recordCheck, run } from "./lib.mjs";
 
 const config = loadConfig();
 const staged = (git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"]) || "")
@@ -27,13 +27,19 @@ if (isDocsOnly(staged, config)) {
   process.exit(0);
 }
 
+// The runtime of the code-commit checks is recorded, so the audit can flag a hook that has
+// grown slow enough to tempt anyone into skipping it.
+const started = Date.now();
+const seconds = () => Math.round((Date.now() - started) / 1000);
 for (const command of config.commands?.precommit || []) {
   console.log(`pre-commit: ${command}`);
   const r = run(command, { timeoutSeconds: config.precommitTimeoutSeconds || 300 });
   if (!r.ok) {
+    recordCheck("precommit", { date: new Date().toISOString(), ok: false, seconds: seconds(), failed: command });
     console.error(r.output);
     console.error(`pre-commit: refused, "${command}" failed. Fix it; never skip the hook.`);
     process.exit(1);
   }
 }
-console.log("pre-commit: passed");
+recordCheck("precommit", { date: new Date().toISOString(), ok: true, seconds: seconds() });
+console.log(`pre-commit: passed (${seconds()} s)`);

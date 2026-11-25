@@ -4,6 +4,9 @@
       "npm run typecheck",
       "npm test"
     ],
+    "full": [
+      "npm run check"
+    ],
     "typecheck": "npm run typecheck",
     "lintFile": ""
   },
@@ -22,5 +25,7 @@
   "precommitTimeoutSeconds": 300,
   "protectedBranches": [
     "main"
-  ]
+  ],
+  "fullTimeoutSeconds": 1800,
+  "precommitWarnSeconds": 120
 }

@@ -74,3 +74,6 @@ changelog, all under https://code.claude.com/docs/en/.
 23. Unattended `claude -p` runs take `--max-turns` and `--max-budget-usd` as caps.
 24. Writer and reviewer: a fresh session reviews without the writer's reasoning; `/model`
     switches the model.
+25. Custom commands in `.claude/commands/*.md` still work but are merged into skills;
+    `.claude/skills/<name>/SKILL.md` adds frontmatter such as `disable-model-invocation`.
+    The audit flags old-style command files and side-effect skills without it.

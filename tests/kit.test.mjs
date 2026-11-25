@@ -2,7 +2,7 @@
 // The eval suite in evals/ covers the skills; this covers the scripts they rely on.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -118,6 +118,52 @@ test("audit: runs read-only on a bare repo and reports the missing pieces", () =
   assert.match(out, /No instruction file/);
   assert.match(out, /No active git pre-commit hook/);
   assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }), before);
+});
+
+test("audit: matches never-lines to rules, finds unguarded side effects, leftovers, frozen sets; reads the full-check record", () => {
+  const { dir, g } = tempRepo();
+  const w = (p, t) => {
+    mkdirSync(join(dir, p, ".."), { recursive: true });
+    writeFileSync(join(dir, p), t);
+  };
+  w("AGENTS.md", "# P\n\n## Architecture\n\n- Never edit `data/frozen/`: the gold set.\n- Never run `npm run live` without asking: it spends quota.\n- Ask before writing any code, and wait for okay before any change.\n");
+  w(".claude/settings.json", JSON.stringify({ permissions: { deny: ["Edit(/data/frozen/**)"] } }));
+  w(".claude/skills/ship/SKILL.md", "---\nname: ship\ndescription: ship it\n---\nRun git push origin main.\n");
+  w(".claude/commands/old.md", "Say hi.\n");
+  w("data/frozen/a.json", "{}\n");
+  w("tools/not-vibing/config.json", JSON.stringify({ commands: { full: ["node --version"] } }));
+  g("branch", "merged-one");
+  const before = execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" });
+  const audit = () => execFileSync(process.execPath, [join(tools, "audit.mjs"), "--root", dir], { encoding: "utf8" });
+  let out = audit();
+  assert.match(out, /Never edit `data\/frozen\/`.*matches `\.claude\/settings\.json deny Edit/);
+  assert.match(out, /npm run live.*no rule or hook names it/);
+  assert.match(out, /1 of 2 never\/only\/opt-in lines have no rule/);
+  assert.match(out, /side effects.*\.claude\/skills\/ship\/SKILL\.md/);
+  assert.match(out, /`\.claude\/commands\/`.*old\.md/);
+  assert.match(out, /Architecture, folder or tree content.*AGENTS\.md:3/);
+  assert.match(out, /may gate every step.*AGENTS\.md:7/);
+  assert.match(out, /merged branches merged-one/);
+  assert.match(out, /data\/frozen\/ \(1 entries\)/);
+  assert.match(out, /No Claude Code hooks in the project/);
+  assert.match(out, /Last local full check: no record/);
+  assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }), before);
+
+  const r = node(join(tools, "full-check.mjs"), "", dir);
+  assert.equal(r.status, 0, r.stderr);
+  out = audit();
+  assert.match(out, /Last local full check \(full-check\.mjs\): passed on [0-9a-f]{10}.*HEAD is 0 commit\(s\) past it/);
+});
+
+test("full check: refuses without commands.full, records a failure", () => {
+  const { dir } = tempRepo();
+  assert.equal(node(join(tools, "full-check.mjs"), "", dir).status, 1);
+  mkdirSync(join(dir, "tools", "not-vibing"), { recursive: true });
+  writeFileSync(join(dir, "tools", "not-vibing", "config.json"), JSON.stringify({ commands: { full: ["node -e \"process.exit(3)\""] } }));
+  assert.equal(node(join(tools, "full-check.mjs"), "", dir).status, 1);
+  const gitDir = execFileSync("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir, encoding: "utf8" }).trim();
+  const rec = JSON.parse(readFileSync(join(gitDir, "not-vibing-checks.json"), "utf8"));
+  assert.equal(rec.full.ok, false);
 });
 
 test("templates: valid JSON, no leftover pieces of the old design", () => {

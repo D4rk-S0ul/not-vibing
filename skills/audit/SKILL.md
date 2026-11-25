@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Audit a running project's harness - instruction length, hooks and permissions, CI staleness, docs-only commits, evidence tiers, stale STATUS - then judge which numbers drove decisions and what is written twice. Read-only; proposes changes.
+description: Audit a running project's harness - instruction length and content, hooks and the rules they cover, CI and local checks, pre-commit cost, skills, leftovers, evidence tiers, stale STATUS - then judge which numbers drove decisions and what is written twice. Read-only; proposes changes.
 disable-model-invocation: true
 allowed-tools:
   - Read(${CLAUDE_PLUGIN_ROOT}/**)
@@ -34,20 +34,32 @@ its output).
    tier: 1 = the truth source itself, 2 = a proxy shown to agree with it, 3 = a proxy never
    checked against it. A decision on a tier-3 number is a high finding. Look in particular
    for a metric that counts partial results as full ones, and for criteria changed after the
-   result was seen.
+   result was seen. Read each ADR still in force that the script lists with a caveat about
+   its own evidence ("may favor", "drafted by", "not calibrated"): was the caveat settled,
+   and what tier is the number now? Without `steps.json`, propose that every step and every
+   ADR in force name its evidence tier.
 2. **Written twice.** Facts or steps held in more than one place (status, plan, parked,
    next-steps, weekly notes, stage files, the instruction file). Name each pair and which
    home should stay.
-3. **Prose that should be a hook, and prose a hook made redundant.** Never-rules in the
-   instruction file that no hook, deny rule or CI step enforces. And the reverse: lines that
+3. **Prose that should be a hook, and prose a hook made redundant.** Go through the script's
+   list of never/only/opt-in lines. For each line it says nothing names, settle whether a
+   mechanism covers it anyway. Look beyond the never-rules written in prose: commands that
+   spend quota (live runs, probes, batch jobs) want an ask rule or a hook, paths that must
+   never change a deny rule, and the fast feedback hooks (Stop typecheck, SessionStart
+   summary) are missing if the script lists those events as unused. And the reverse: lines that
    restate what a mechanism already enforces for every agent in use (project or user-level
    hooks in `~/.claude/settings.json` count): they should go, if the mechanism's message says
    what to do instead; if it doesn't, the fix is a better message, not the line.
-4. **Hooks that are preferences.** Hooks or checks that guard taste rather than a never-rule,
-   and checks that cost more than they catch (a pre-commit hook that runs minutes for a
-   docs-only commit).
-5. **The second instance.** Whether CI still runs on what is committed, and whether anyone
-   reads it.
+4. **Hooks that are preferences, and what checks cost.** Hooks or checks that guard taste
+   rather than a never-rule, and checks that cost more than they catch. Look at the cost of a
+   code commit, not only a docs-only one: if the script has no runtime record, read the
+   hook's tiers and say what a typical code commit runs and roughly how long (ask the user
+   before timing it). Over about 2 minutes is a finding; the usual remedy is fast checks in
+   the hook and the full suite in `full-check.mjs` before a push and in CI.
+5. **The second instance, as a risk, not a state.** Whether CI still runs on what is
+   committed and whether anyone reads it. A green CI today is not the answer: ask what would
+   keep "checked" a fact if CI were unavailable for a week (rationed minutes, an outage).
+   Without a local full-check record that names its commit, the answer is "nothing".
 6. **Loops.** Any autonomous loop (`/goal`, `/loop`, Stop hooks, `claude -p`) pointed at a
    tier-3 number.
 7. **Repeated mistakes.** For each memory note and instruction line the script lists as
@@ -55,6 +67,14 @@ its output).
    same fix in several commits)? Is there a hook, script or test that catches it? A mistake
    that happened more than once without a mechanism is a finding; propose the mechanism, and
    that the note then only points to it.
+8. **Instruction-file content and gates.** Content the agent's own current guidance says to
+   leave out (architecture overviews, folder descriptions, anything the agent can read from
+   the repo), and rules that gate every step rather than an outcome (an approval before any
+   code is written). The script lists candidate lines; judge each.
+9. **Closed measurements.** For each frozen set, archive and replay test the script lists:
+   does it still guard a live decision, or does it serve a measurement that is closed? What
+   does it cost (test runtime, attention)? Propose retiring closed ones under a git tag, so
+   they can be brought back.
 
 ## 3. Report
 
