@@ -7,7 +7,7 @@ max_turns: 40
 timeout_seconds: 1500
 allowed_tools: [Read, Glob, Grep, Skill, Bash, WebFetch, Agent]
 env:
-  EVAL_NOT_VIBING_TODAY: "2026-12-26"
+  EVAL_NOT_VIBING_TODAY: "+32"
 ---
 
 /not-vibing:audit (test of the freshness check only: do step 0 completely, report its result, then stop)

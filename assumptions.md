@@ -67,5 +67,10 @@ changelog, all under https://code.claude.com/docs/en/.
 19. `/goal`, `/loop` and headless `claude -p` exist for autonomous work.
 20. `/doctor prompt-audit` flags outdated, missing or contradicting instructions; `/context all` shows what fills the context;
     `/fewer-permission-prompts` proposes an allowlist from past sessions.
-21. Writer and reviewer: a fresh session reviews without the writer's reasoning; `/model`
+21. Path-scoped rules: `.claude/rules/<name>.md` with a `paths:` frontmatter list load only
+    when matching files are touched.
+22. `/sandbox` confines shell commands at the OS level on macOS, Linux and WSL2 (not native
+    Windows); deny rules on Edit/Read don't stop a script from writing a path.
+23. Unattended `claude -p` runs take `--max-turns` and `--max-budget-usd` as caps.
+24. Writer and reviewer: a fresh session reviews without the writer's reasoning; `/model`
     switches the model.

@@ -19,7 +19,7 @@ Or from a shell: `claude plugin marketplace add D4rk-S0ul/not-vibing`, then
 `claude plugin install not-vibing@not-vibing`. To try a local clone:
 `claude --plugin-dir ./not-vibing`.
 
-The hooks and scripts need Node.js (version 20 or later) in every project that uses them,
+The hooks and scripts need Node.js (tested on version 24) in every project that uses them,
 whatever the project's own stack, and Claude Code 2.1.295 or later (for `onFailure: block`
 on the git guard; older versions run the hooks but let a failing guard through). `gh` (GitHub CLI) is optional; without it the CI lines say
 "unknown".
@@ -36,7 +36,7 @@ on the git guard; older versions run the hooks but let a failing guard through).
 
 | File | Purpose |
 |---|---|
-| `AGENTS.md` | The instruction file for any agent, under 80 lines. `CLAUDE.md` imports it |
+| `AGENTS.md` | The instruction file for any agent, budgeted at about 80 lines. `CLAUDE.md` imports it |
 | `STATUS.md` | Where we stand, the next step, what waits for you. At most 60 lines, rewritten each session |
 | `steps.json` | Components with their kind of truth, steps with criteria as first written, evidence tier and a pass flag |
 | `.githooks/pre-commit` | Fast checks on every commit, from any agent or by hand |

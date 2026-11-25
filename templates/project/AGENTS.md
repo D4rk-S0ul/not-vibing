@@ -14,7 +14,7 @@ Read `STATUS.md` first (where we stand, the next step). Steps and their evidence
 
 - install: `{{INSTALL}}` (then once per clone: `git config core.hooksPath .githooks`)
 - test one file: `{{TEST_ONE}}`
-- all checks: `{{CHECK_ALL}}` (CI runs this on every push)
+- all checks: `{{CHECK_ALL}}` (CI runs this on pull requests and `main`)
 - {{OTHER_COMMAND: only commands a session needs}}
 
 ## How we work

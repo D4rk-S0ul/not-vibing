@@ -28,8 +28,8 @@ say so and suggest `/not-vibing:audit` instead; continue only if the user wants 
 ## 2. Interview
 
 Interview the user until you could write the project's spec. Ask in batches of up to four
-questions at a time. Put every option's wording into the question text itself: the user may be
-on a tablet, where option previews are hidden. Offer a recommended answer first where one is
+questions at a time. Put every option's wording into the question text itself: some clients (phones,
+tablets, remote sessions) hide option previews. Offer a recommended answer first where one is
 sensible. Cover, in this order:
 
 1. **Mission**: what it does, for whom, the hard constraints (cost, privacy, offline).
@@ -57,7 +57,7 @@ commands are known. Write the result to `SPEC.md`.
 
 Show the user, before writing anything else:
 - the list of files below with one line each on what goes in it;
-- the project's `AGENTS.md` draft in full (under 80 lines);
+- the project's `AGENTS.md` draft in full (a budget of about 80 lines);
 - the never-rules and how each is enforced (deny rule, ask rule, hook, CI, or prose and why);
 - stage 0 per component, chosen by its kind of truth (see the stage skill in the templates);
 - what is deliberately not set up: cloud schedules, weekly notes, a plan file beside
@@ -70,8 +70,8 @@ Wait for the user's okay.
    It never overwrites; merge anything it skipped by hand.
 2. Fill them in. Leave no `{{...}}` placeholder and no template comment behind:
    - `AGENTS.md`: mission, exact commands (install, test one file, all checks), never-rules
-     with reasons, pitfalls. A budget of about 80 lines (Anthropic's limit is 200). `CLAUDE.md` stays the one-line import
-     `@AGENTS.md`. Whatever a hook, deny rule, test or CI enforces for every agent in use
+     with reasons, pitfalls. A budget of about 80 lines (Anthropic's limit is 200).
+     `CLAUDE.md` stays the one-line import `@AGENTS.md`. Whatever a hook, deny rule, test or CI enforces for every agent in use
      leaves the file: the mechanism's message says what to do. A rule enforced for Claude Code
      only stays, marked as the guard for the other agents.
    - `STATUS.md`: where we stand, the next step, what waits for the user. At most 60 lines.
@@ -99,7 +99,7 @@ Wait for the user's okay.
      step if it is not Node. It runs on pull requests and `main` only, so CI minutes stay a
      budget. If the project is hosted elsewhere, adapt to its CI.
    - `docs/adr/0001-...` only if a decision already needs one. Keep `0000-template.md`.
-   - Long-running scripts (batch jobs, queues, anything against an API key): run them through
+   - Long-running scripts (batch jobs, queues, anything that spends quota): run them through
      `node tools/not-vibing/lock.mjs <name> -- "<command>"` (for example in the npm script), so
      a second copy refuses to start while a stopped task's script is still running. Keep
      `lock.mjs` only if the project has such scripts.
@@ -143,6 +143,7 @@ Tell the user, in a few lines:
 - after the first week of work, `/fewer-permission-prompts`;
 - start each session with `/session-start` and end it with `/session-end`;
 - `/not-vibing:review` once per active week and before any decision that rests on a number;
-- preferences that hold across all their projects (how they like decisions asked, machine
-  pitfalls) belong in their own `~/.claude/CLAUDE.md`, not in the project.
-  Offer to draft it; editing it needs their okay.
+- preferences that hold across all their projects (how they like decisions asked) belong
+  in their own `~/.claude/CLAUDE.md`, not in the project; a mistake that keeps coming back
+  on their machine becomes a user-level hook (`~/.claude/settings.json`), not a line there.
+  Offer to draft either; editing user-level files needs their okay.

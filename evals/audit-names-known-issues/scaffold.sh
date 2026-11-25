@@ -1,5 +1,5 @@
 #!/bin/bash
-# A small project with the known Anki-Tool problems, invented content only.
+# A small invented project with the problems the audit must find.
 set -e
 git init -q -b main
 git config user.email eval@example.invalid

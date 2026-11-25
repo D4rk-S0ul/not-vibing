@@ -1,6 +1,6 @@
 // One copy at a time for long-running scripts (batch jobs, queues, anything that spends quota).
 // A stopped agent task can leave its script running; a restart would then start a second copy
-// against the same key. This refuses to start while a live copy holds the lock.
+// that spends the same quota. This refuses to start while a live copy holds the lock.
 //
 // Usage: node tools/not-vibing/lock.mjs <name> -- "<command>"   (one quoted string, run by the shell)
 //        node tools/not-vibing/lock.mjs --status <name>

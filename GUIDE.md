@@ -22,9 +22,9 @@ must never break.
 
 ## 2. Where this comes from
 
-The method was distilled from one real project, *Anki-Tool*: seven weeks (October to November
-2026) building a tool that turns lecture PDFs into flashcards using free-tier language models.
-One person judged the results, and an agent wrote the code.
+The method was distilled from one real project: seven weeks (October to November 2026)
+building a tool that generates content with free-tier language models. One person judged the
+results, and an agent wrote the code.
 
 | What | Number |
 |---|---|
@@ -33,24 +33,24 @@ One person judged the results, and an agent wrote the code.
 | Lines of docs | about 18.7k |
 | Decision records (ADRs) | 29 |
 | Steps done / closed without meeting their goal | 66 / 21 |
-| **The user's 6 reviews of real decks** | **0 of 56 cards kept unchanged**, 28 edited, 28 dropped (23 as "not relevant") |
+| **The user's 6 reviews of real output** | **0 of 56 generated items kept unchanged**, 28 edited, 28 dropped (23 as "not relevant") |
 
 The project was honest. It wrote down every weakened goal, with the date and the reason. It
 had 37,000 lines of tests, rules, automated judges and a benchmark against a gold set. Yet in
-six real reviews the user kept none of the generated cards unchanged.
+six real reviews the user kept none of the generated items unchanged.
 
 What went wrong:
 
-- **It measured the wrong thing.** Whether a card is good is a matter of the user's taste: the
+- **It measured the wrong thing.** Whether an item is good is a matter of the user's taste: the
   only real reference is what the user keeps. The project built rules, model judges and
   gold-set agreement as stand-ins, and never checked early whether they agreed with the
   user's verdict.
 - **A number lied for a month.** The coverage figure counted "partly covered" as covered. Of
-  57 cards, 13 were fully covered and 32 only partly, yet the report said 45 of 57. Several
+  57 items, 13 were fully covered and 32 only partly, yet the report said 45 of 57. Several
   decisions rested on that number. None of the project's own checks found it. An outside
   review by a different model, with no shared context, did.
-- **The biggest improvement came from the user, not the benchmark.** The reviews showed that
-  what deserves a card follows the lecture's learning objectives. No proxy had pointed there.
+- **The biggest improvement came from the user, not the benchmark.** The reviews showed what
+  the user actually selects for. No proxy had pointed there.
 - **Process grew without a budget.** One step was written down in three to five places. The
   pre-commit check took 2 to 9 minutes, even for a typo in the docs.
 - **The second instance quietly switched off.** CI minutes ran out, and the main branch sat
@@ -80,13 +80,13 @@ One example each:
   invariants (parse then format gives the input back) and inputs that must be rejected.
 - *Specified*: an export to a file format another program reads. The reference is that
   format's spec and, better, the other program actually opening the file.
-- *Observed*: generated flashcards. The reference is what the user keeps unchanged after
-  studying with them. A model judge is a proxy until it is shown to agree with that.
+- *Observed*: generated summaries. The reference is what the user keeps unchanged after
+  using them. A model judge is a proxy until it is shown to agree with that.
 - *Bounded*: a web page must load in under two seconds on a slow phone. The reference is
   that number measured in CI on every change, not once on a fast laptop.
 
-A project is usually mixed. In Anki-Tool the file writer was computable, the card rules were
-specified, and which cards to make was observed. The trouble came from treating the observed
+A project is usually mixed. In the project above, the file writer was computable, the
+content rules were specified, and what to generate was observed. The trouble came from treating the observed
 part as if it were specified.
 
 ### 3.2 Evidence comes in ranks
@@ -154,11 +154,6 @@ The kit's own exceptions to Anthropic's Claude Code guidance, as of November 202
 | A mistake Claude made twice: add a line to CLAUDE.md | If a check can detect it, a hook, script or test; otherwise the line | §3.9. The evidence is about memory notes, not CLAUDE.md lines, so the line stays the answer for mistakes no check can see |
 | CLAUDE.md under 200 lines | A budget of about 80 for `AGENTS.md` | Inside the guidance, not against it: shorter keeps every line read, and the file serves other agents too |
 
-One choice was tried and dropped: the kit first capped its typecheck Stop hook at three blocks
-("after two failed corrections, start fresh"). That advice is about a person correcting a
-drifting conversation, not a typecheck that says what is wrong, and no measurement backed the
-three. The kit now uses Claude Code's built-in cap.
-
 ### 3.9 A repeated mistake becomes a mechanism
 
 Whatever needs a memory note a second time becomes a hook, a script or a test, if a check can
@@ -167,10 +162,10 @@ of judgment) gets a line in the instruction file instead; if it happens again de
 line, the line is the wrong tool: shorten the file or find a mechanism.
 
 A note works only if the agent reads it and applies it at the right moment, and memory notes
-are read only on demand. In Anki-Tool a
-note said that stopping a background task can leave its script running. It had been there for
-five days when the same thing happened twice in one evening: a stopped task's script kept
-going and would have started a second copy of a job against the same key. Several other
+are read only on demand. In the project above, a note said that stopping a background task
+can leave its script running. It had been there for five days when the same thing happened
+twice in one evening: a stopped task's script kept going and would have started a second
+copy of a job that spends quota. Several other
 mistakes (line endings rewritten by a script, backslashes lost in regular expressions,
 invisible characters from escape sequences) were each written down as notes after they
 happened, and were caught only later, at commit time, by a text check.
@@ -181,10 +176,8 @@ second copy refuses to start. The audit lists the project's notes about mistakes
 each: has it happened more than once, and is there a mechanism for it?
 
 The other half of the rule: **whatever a hook enforces leaves the instruction file.** The
-hook's own message says what to do instead, at the moment it matters. After the Anki-Tool
-user turned their machine's known pitfalls into hooks (one refuses known-bad commands
-beforehand, one checks every written file), their cross-project instruction file shrank to
-two lines. A line that a mechanism covers only costs attention.
+hook's own message says what to do instead, at the moment it matters. A line that a mechanism
+covers only costs attention.
 
 ## 4. The working loop
 
@@ -217,13 +210,15 @@ Instructions in prose are suggestions: an agent follows them most of the time, n
 Hooks, permission rules and CI are deterministic. So never-rules go into the machine, and
 preferences stay as prose or nowhere. Most of the time you want the agent to decide.
 
-The kit sets up about five rules and no preferences:
+The kit sets up a small set of mechanisms and no preferences. Two of them are filled in per
+project when it is set up: the paths and commands to protect, and branch protection, which
+needs a GitHub remote and your okay.
 
 | Rule | Where | Holds for |
 |---|---|---|
-| Ask before editing protected paths or spending quota; deny edits to frozen data | Claude Code permission rules | Claude Code |
+| Ask before editing protected paths or spending quota; deny edits to frozen data (added per project) | Claude Code permission rules | Claude Code |
 | Work branches push freely; a push that reaches `main` or a tag asks; a force push and skipping the commit hook are refused | Hook before each shell command (it reads the whole command, which permission patterns can't do reliably) | Claude Code |
-| `main` changes only through a pull request whose CI passed | Branch protection on the server | every agent, and you |
+| `main` changes only through a pull request whose CI passed (offered at setup) | Branch protection on the server | every agent, and you |
 | Each edited file checked at once: line endings, control bytes, invisible characters, lint, boundaries such as "core has no DOM" | Hook after each edit | Claude Code |
 | A fast typecheck before the agent may end its turn | Stop hook | Claude Code |
 | Status, CI result and review reminder at session start | Session-start hook | Claude Code (a script any agent can run) |

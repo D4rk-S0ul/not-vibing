@@ -106,6 +106,8 @@ test("freshness: stale after 30 days, fresh before", () => {
   const run = (today) => execFileSync(process.execPath, [join(kit, "scripts", "freshness.mjs"), "--today", today], { encoding: "utf8" });
   assert.match(run(day(30)), /^fresh/);
   assert.match(run(day(31)), /^stale/);
+  const rel = execFileSync(process.execPath, [join(kit, "scripts", "freshness.mjs")], { encoding: "utf8", env: { ...process.env, EVAL_NOT_VIBING_TODAY: "+32" } });
+  assert.match(rel, /^stale: .* 32 days ago/);
 });
 
 test("audit: runs read-only on a bare repo and reports the missing pieces", () => {
