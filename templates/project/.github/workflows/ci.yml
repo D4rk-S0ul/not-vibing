@@ -1,0 +1,26 @@
+# The second instance: the full suite, on a machine that is not the laptop. Runs on pull
+# requests and on main, not on every pushed branch: CI minutes are a budget. A newer push to
+# the same branch cancels the older run. Work branches get CI by opening a (draft) pull request.
+# A test bench nobody reads tests nothing: the SessionStart hook reports the latest result.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  # Superseded pull-request runs are cancelled; every commit on main is checked.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Stack-specific setup and the full suite: filled in by /not-vibing:new.
+      - run: INSTALL_COMMAND
+      - run: node tools/not-vibing/text-check-all.mjs
+      - run: FULL_CHECK_COMMAND

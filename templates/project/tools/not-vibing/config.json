@@ -1,0 +1,26 @@
+{
+  "commands": {
+    "precommit": [
+      "npm run typecheck",
+      "npm test"
+    ],
+    "typecheck": "npm run typecheck",
+    "lintFile": ""
+  },
+  "lintExtensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".mjs"
+  ],
+  "docsPaths": [
+    "docs/",
+    ".claude/"
+  ],
+  "boundaries": [],
+  "stopTimeoutSeconds": 30,
+  "precommitTimeoutSeconds": 300,
+  "protectedBranches": [
+    "main"
+  ]
+}

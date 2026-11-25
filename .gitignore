@@ -1,0 +1,5 @@
+evals/results/
+# The spec and its addendum hold local paths and personal context: never published.
+/SPEC*.md
+# Local patterns for the personal-data check (scripts/kit-check.mjs); never published.
+/.personal-patterns

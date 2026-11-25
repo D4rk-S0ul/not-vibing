@@ -1,0 +1,31 @@
+{
+  "about": "Components with their kind of truth, and steps with a pass flag each. A step's criterion stays as first written; a weakened criterion is added under 'weakened' with date and reason. pass is true only on evidence of tier 1 or 2. Tiers: 1 = the truth source itself, 2 = a proxy shown to agree with it, 3 = a proxy never checked against it.",
+  "components": [
+    {
+      "id": "example-component",
+      "kind": "computable | specified | observed | bounded",
+      "truth": "What correct means for this component, in one line",
+      "reference": "The strongest reference: an oracle, the spec's test vectors, what the user keeps, a budget measured in CI",
+      "cheapestWayToReference": "How to reach that reference soonest",
+      "proxyUntilThen": "What stands in until then, and its tier",
+      "measurements": [
+        { "date": "YYYY-MM-DD", "what": "metric name", "value": "number", "tier": 1, "by": "command or source" }
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "0.1",
+      "component": "example-component",
+      "title": "Stage 0: the reference first",
+      "criterion": "Measurable, as first written",
+      "criterionWritten": "YYYY-MM-DD",
+      "evidence": { "kind": "computable", "tier": 1, "command": "the command whose output proves it" },
+      "spike": false,
+      "killLine": null,
+      "pass": false,
+      "result": null,
+      "weakened": []
+    }
+  ]
+}

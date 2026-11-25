@@ -1,0 +1,19 @@
+# The kit's own second instance: its tests and the text check on every pull request and on
+# main. (The personal-data check needs the maintainer's local patterns, so it runs only in the
+# pre-commit hook.)
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node templates/project/tools/not-vibing/text-check-all.mjs
+      - run: node --test tests/kit.test.mjs

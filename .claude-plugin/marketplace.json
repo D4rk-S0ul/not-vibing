@@ -1,0 +1,15 @@
+{
+  "name": "not-vibing",
+  "description": "The Not Vibing kit for building with AI coding agents on evidence.",
+  "owner": {
+    "name": "D4rk-S0ul",
+    "url": "https://github.com/D4rk-S0ul"
+  },
+  "plugins": [
+    {
+      "name": "not-vibing",
+      "source": "./",
+      "description": "Proof, not vibes: /not-vibing:new sets up a project, /not-vibing:audit checks a running one, /not-vibing:review starts the outside review."
+    }
+  ]
+}

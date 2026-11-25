@@ -1,0 +1,19 @@
+{
+  "name": "not-vibing",
+  "version": "0.1.0",
+  "description": "Proof, not vibes: start and run software projects with AI coding agents so every decision rests on the strongest evidence its component has.",
+  "author": {
+    "name": "D4rk-S0ul",
+    "url": "https://github.com/D4rk-S0ul"
+  },
+  "homepage": "https://github.com/D4rk-S0ul/not-vibing",
+  "repository": "https://github.com/D4rk-S0ul/not-vibing",
+  "license": "MIT",
+  "keywords": [
+    "harness",
+    "verification",
+    "evidence",
+    "hooks",
+    "workflow"
+  ]
+}
